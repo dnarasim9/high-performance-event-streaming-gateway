@@ -1,0 +1,44 @@
+# Binaries
+/gateway
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test outputs
+coverage.out
+coverage.html
+*.test
+*.prof
+
+# Build artifacts
+/dist/
+/bin/
+/vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Go
+/gopath/
+
+# Temporary
+/tmp/
+*.log
+
+# Backup files
+*.go.[0-9]*
