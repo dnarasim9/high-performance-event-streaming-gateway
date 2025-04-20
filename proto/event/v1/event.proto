@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package event.v1;
+
+option go_package = "github.com/dheemanth-hn/event-streaming-gateway/gen/go/event/v1;eventv1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// Priority levels for events
+enum Priority {
+  PRIORITY_UNSPECIFIED = 0;
+  PRIORITY_LOW = 1;
+  PRIORITY_MEDIUM = 2;
+  PRIORITY_HIGH = 3;
+  PRIORITY_CRITICAL = 4;
+}
+
+// Core Event message representing a cloud event
+message Event {
+  string id = 1;
+  string source = 2;
+  string type = 3;
+  string subject = 4;
+  bytes data = 5;
+  string data_content_type = 6;
+  string schema_url = 7;
+  google.protobuf.Timestamp timestamp = 8;
+  map<string, string> metadata = 9;
+  string correlation_id = 10;
+  string causation_id = 11;
+  string partition_key = 12;
+  Priority priority = 13;
+}
+
+// EventFilter for filtering events in subscribe and replay requests
+message EventFilter {
+  string source_pattern = 1;  // Regex or wildcard pattern for source
+  string type_pattern = 2;    // Regex or wildcard pattern for type
+  string subject_pattern = 3; // Regex or wildcard pattern for subject
+  map<string, string> metadata_filters = 4;
+  Priority priority_filter = 5;
+}
+
+// Request to ingest a single event
+message IngestEventRequest {
+  Event event = 1;
+}
+
+// Response to ingest request
+message IngestEventResponse {
+  string event_id = 1;
+  bool success = 2;
+  string error_message = 3;
+}
+
+// Request to subscribe to events
+message SubscribeRequest {
+  EventFilter filter = 1;
+  int32 buffer_size = 2; // Buffer size for event streaming
+}
+
+// Request to replay events within a time range
+message ReplayRequest {
+  EventFilter filter = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  int32 buffer_size = 4;
+}
+
+// Request to get a single event by ID
+message GetEventRequest {
+  string event_id = 1;
+}
+
+// Response containing a single event
+message GetEventResponse {
+  Event event = 1;
+}
+
+// EventService provides core event streaming operations
+service EventService {
+  // IngestEvent sends a single event to the gateway
+  rpc IngestEvent(IngestEventRequest) returns (IngestEventResponse);
+
+  // IngestEventStream allows clients to send a stream of events
+  rpc IngestEventStream(stream IngestEventRequest) returns (stream IngestEventResponse);
+
+  // SubscribeEvents allows clients to subscribe to a stream of events matching filters
+  rpc SubscribeEvents(SubscribeRequest) returns (stream Event);
+
+  // ReplayEvents allows clients to replay events within a time range
+  rpc ReplayEvents(ReplayRequest) returns (stream Event);
+
+  // GetEvent retrieves a single event by its ID
+  rpc GetEvent(GetEventRequest) returns (GetEventResponse);
+}
