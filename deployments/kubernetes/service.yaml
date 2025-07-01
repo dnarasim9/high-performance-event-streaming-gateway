@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: event-gateway
+  namespace: default
+  labels:
+    app: event-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: event-gateway
+  ports:
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+    protocol: TCP
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  - name: metrics
+    port: 8081
+    targetPort: 8081
+    protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: event-gateway-lb
+  namespace: default
+  labels:
+    app: event-gateway
+spec:
+  type: LoadBalancer
+  selector:
+    app: event-gateway
+  ports:
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+    protocol: TCP
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600

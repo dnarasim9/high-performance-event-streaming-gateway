@@ -1,0 +1,177 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-gateway
+  namespace: default
+  labels:
+    app: event-gateway
+    version: v1
+    managed-by: kubernetes
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: event-gateway
+  template:
+    metadata:
+      labels:
+        app: event-gateway
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: event-gateway
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+      - name: event-gateway
+        image: event-gateway:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: grpc
+          containerPort: 50051
+          protocol: TCP
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 8081
+          protocol: TCP
+
+        env:
+        - name: KAFKA_BROKERS
+          valueFrom:
+            configMapKeyRef:
+              name: event-gateway-config
+              key: kafka.brokers
+        - name: KAFKA_COMPRESSION
+          valueFrom:
+            configMapKeyRef:
+              name: event-gateway-config
+              key: kafka.compression
+        - name: KAFKA_BATCH_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: event-gateway-config
+              key: kafka.batch.size
+        - name: KAFKA_BATCH_TIMEOUT_MS
+          valueFrom:
+            configMapKeyRef:
+              name: event-gateway-config
+              key: kafka.batch.timeout.ms
+        - name: GRPC_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: event-gateway-config
+              key: grpc.port
+        - name: HTTP_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: event-gateway-config
+              key: http.port
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: event-gateway-config
+              key: log.level
+        - name: METRICS_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: event-gateway-config
+              key: metrics.enabled
+        - name: METRICS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: event-gateway-config
+              key: metrics.port
+        - name: MAX_MESSAGE_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: event-gateway-config
+              key: max.message.size
+        - name: POOL_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: event-gateway-config
+              key: pool.size
+        - name: SHUTDOWN_TIMEOUT_SECONDS
+          valueFrom:
+            configMapKeyRef:
+              name: event-gateway-config
+              key: shutdown.timeout.seconds
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+              - ALL
+
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: var-cache
+          mountPath: /var/cache
+
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: var-cache
+        emptyDir: {}
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - event-gateway
+              topologyKey: kubernetes.io/hostname
+
+      terminationGracePeriodSeconds: 30

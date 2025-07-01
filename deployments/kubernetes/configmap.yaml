@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: event-gateway-config
+  namespace: default
+  labels:
+    app: event-gateway
+data:
+  kafka.brokers: "kafka-broker-0.kafka-brokers:9092,kafka-broker-1.kafka-brokers:9092,kafka-broker-2.kafka-brokers:9092"
+  kafka.compression: "snappy"
+  kafka.batch.size: "16384"
+  kafka.batch.timeout.ms: "100"
+  kafka.required.acks: "all"
+  kafka.retention.ms: "604800000"
+  kafka.partitions: "10"
+  kafka.replication.factor: "3"
+
+  grpc.port: "50051"
+  grpc.max.connection.idle: "5m"
+  grpc.max.connection.age: "2h"
+  grpc.keepalive.time: "2h"
+  grpc.keepalive.timeout: "20s"
+
+  http.port: "8080"
+  http.read.timeout: "30s"
+  http.write.timeout: "30s"
+  http.idle.timeout: "120s"
+
+  log.level: "info"
+  log.format: "json"
+
+  metrics.enabled: "true"
+  metrics.port: "8081"
+  metrics.path: "/metrics"
+
+  max.message.size: "10485760"
+  pool.size: "100"
+  pool.queue.size: "1000"
+  shutdown.timeout.seconds: "30"
+
+  request.timeout.ms: "30000"
+  rate.limit.enabled: "true"
+  rate.limit.requests.per.second: "10000"
+  rate.limit.burst: "100"
+
+  circuit.breaker.enabled: "true"
+  circuit.breaker.failure.threshold: "50"
+  circuit.breaker.success.threshold: "5"
+  circuit.breaker.timeout.seconds: "30"
+
+  tracing.enabled: "false"
+  tracing.sample.rate: "0.1"
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: event-gateway
+  namespace: default
+  labels:
+    app: event-gateway
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: event-gateway
+  namespace: default
+  labels:
+    app: event-gateway
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: event-gateway
+  namespace: default
+  labels:
+    app: event-gateway
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: event-gateway
+subjects:
+- kind: ServiceAccount
+  name: event-gateway
+  namespace: default
